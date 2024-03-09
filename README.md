@@ -1,0 +1,1 @@
+simple polling web application. See dockerfile if running  in docker, otherwise compile with `go build .` and `./pollstar -questions questions.json`
