@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>poll</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <script src="https://unpkg.com/htmx.org@1.9.6" integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Poll</h1>
+        <form action="submit" method="post" hx-post="/poll">
+            <div class="field">
+                <label class="label">What is your favorite color?</label>
+                <div class="control">
+                    <label class="radio">
+                        <input type="radio" name="color" value="red">
+                        Red
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="color" value="green">
+                        Green
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="color" value="blue">
+                        Blue
+                    </label>
+                </div>
+            </div>
+            <div class="field">
+                <div class="control">
+                    <button class="button is-primary" type="submit">Submit</button>
+                </div>
+            </div>
+        </form>
+        <div hx-get="poll.php" hx-trigger="load">
+            <h2 class="subtitle">Results</h2>
+            <div class="content">
+                <p>Red: 0</p>
+                <p>Green: 0</p>
+                <p>Blue: 0</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
