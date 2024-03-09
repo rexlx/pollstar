@@ -1,11 +1,16 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/gorilla/sessions"
+)
+
+var (
+	questions = flag.String("questions", "/questions.json", "The file containing the questions")
 )
 
 func main() {
@@ -17,7 +22,7 @@ func main() {
 	gateway := NewHTMXGateway()
 	gateway.Poll = NewPoll()
 	// p.AddQuestion("What is your favorite programming language?", []string{"Python", "Go", "Java", "C"})
-	err := gateway.Poll.LoadQuestions("questions.json")
+	err := gateway.Poll.LoadQuestions(*questions)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

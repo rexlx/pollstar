@@ -63,15 +63,17 @@ func (h *HTMXGateway) PollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session.Values["voted"] = true
+	session.Save(r, w)
 	fmt.Fprintf(w, "Thanks for voting!")
 }
 
 func (h *HTMXGateway) ResultsHandler(w http.ResponseWriter, r *http.Request) {
-	// session, _ := store.Get(r, "session.id")
-	// if session.Values["voted"] != true {
-	// 	http.Error(w, "You must vote first", http.StatusForbidden)
-	// 	return
-	// }
+	session, _ := store.Get(r, "session.id")
+
+	if session.Values["voted"] != true {
+		http.Error(w, "You must vote first", http.StatusForbidden)
+		return
+	}
 
 	barChart := h.Poll.CreateBarChart()
 	for _, c := range barChart {
