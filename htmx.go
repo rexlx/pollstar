@@ -79,7 +79,10 @@ func (h *HTMXGateway) ResultsHandler(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	barChart := h.Poll.CreateBarChart()
-	barChart.Render(w)
+	for _, c := range barChart {
+		c.Render(w)
+	}
+
 }
 
 func (h *HTMXGateway) ConfigHandler(w http.ResponseWriter, r *http.Request) {

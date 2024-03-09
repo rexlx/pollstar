@@ -22,32 +22,33 @@ import (
 // 	return items
 // }
 
-func (p *Poll) CreateBarChart() *charts.Bar {
+func (p *Poll) CreateBarChart() []*charts.Bar {
 	results := p.Results()
-	var tickNames []string
-	var categories [][]opts.BarData
+	// var tickNames []string
+	var chartz []*charts.Bar
 
-	bar := charts.NewBar()
-	bar.SetGlobalOptions(
-		charts.WithTitleOpts(opts.Title{
-			Title: "Poll Results",
-		}),
-	)
-
+	p.Mem.RLock()
+	defer p.Mem.RUnlock()
 	for _, q := range p.Questions {
-		tickNames = append(tickNames, q.Question)
+		var xAxis []string
+		// tickNames = append(tickNames, q.Question)
 		if v, ok := results[q.Question]; ok {
-			categories = append(categories, CreateBarItems(v))
+			for _, o := range q.Options {
+				xAxis = append(xAxis, o)
+			}
+			newChart := charts.NewBar()
+			newChart.SetGlobalOptions(
+				charts.WithTitleOpts(opts.Title{
+					Title: q.Question,
+				}),
+			)
+			newChart.SetXAxis(xAxis)
+			newChart.AddSeries("selections", CreateBarItems(v))
+			chartz = append(chartz, newChart)
 		}
 	}
 
-	bar.SetXAxis(tickNames)
-	fmt.Println("tickNames", tickNames, results)
-	for _, c := range categories {
-		bar.AddSeries("a", c)
-	}
-
-	return bar
+	return chartz
 }
 
 func CreateBarItems(results []int) []opts.BarData {
