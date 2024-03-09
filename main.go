@@ -29,5 +29,5 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("Loaded questions, starting server")
-	log.Fatal(http.ListenAndServe(":8080", gateway.Server))
+	log.Fatal(http.ListenAndServe(":3000", gateway.Server))
 }

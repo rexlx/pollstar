@@ -31,10 +31,11 @@ func (h *HTMXGateway) HomeHandler(w http.ResponseWriter, r *http.Request) {
 		session.Save(r, w)
 	}
 
-	if session.Values["voted"] == true {
-		http.Error(w, "You have already voted", http.StatusForbidden)
-		return
-	}
+	// if session.Values["voted"] == true {
+	// 	http.Error(w, "You have already voted", http.StatusForbidden)
+	// 	fmt.Println("You have already voted")
+	// 	return
+	// }
 
 	questionsDiv := h.Poll.CreateQuestionHTML()
 
