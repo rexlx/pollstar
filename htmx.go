@@ -34,18 +34,14 @@ func (h *HTMXGateway) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	questionsDiv := h.Poll.CreateQuestionHTML()
 
 	fmt.Fprintf(w, homePage, questionsDiv)
-
-	// ...
 }
 
 func (h *HTMXGateway) PollHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session.id")
-	// var sessionID string
 	if session.Values["session.id"] == nil {
 		http.Error(w, "No session ID", http.StatusBadRequest)
 		return
 	}
-	// sessionID = session.Values["session.id"].(string)
 
 	err := r.ParseForm()
 	if err != nil {
@@ -67,7 +63,6 @@ func (h *HTMXGateway) PollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	session.Values["voted"] = true
-	// fmt.Println(h.Poll.Selections)
 	fmt.Fprintf(w, "Thanks for voting!")
 }
 
@@ -89,10 +84,6 @@ func (h *HTMXGateway) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	// ...
 }
 
-// func (h *HTMXGateway) Start() {
-// 	http.ListenAndServe(":3000", h.Server)
-// }
-
 func NewHTMXGateway() *HTMXGateway {
 	h := &HTMXGateway{
 		StartTime: time.Now(),
@@ -104,11 +95,6 @@ func NewHTMXGateway() *HTMXGateway {
 	h.Server.HandleFunc("/results", h.ResultsHandler)
 	h.Server.HandleFunc("/config", h.ConfigHandler)
 	h.Poll = NewPoll()
-	// err := h.Poll.LoadQuestions("questions.json")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	os.Exit(1)
-	// }
 	return h
 }
 
@@ -131,7 +117,7 @@ var homePage = `
 <div class="container">
   <form hx-post="/poll">
     %s
-    <button type="submit" class="button is-dark">submit</button>
+    <button type="submit" class="button is-info">submit</button>
   </form>
 </div>
 </body>

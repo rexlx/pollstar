@@ -82,16 +82,6 @@ func (p *Poll) Results() map[string][]int {
 	return results
 }
 
-// func (p *Poll) Results() map[PollSelection]int {
-// 	results := make(map[PollSelection]int)
-// 	p.Mem.RLock()
-// 	defer p.Mem.RUnlock()
-// 	for s, count := range p.Selections {
-// 		results[s] = count
-// 	}
-// 	return results
-// }
-
 func (p *Poll) TotalVotes() int {
 	total := 0
 	for _, count := range p.Selections {
@@ -104,7 +94,7 @@ func (p *Poll) CreateQuestionHTML() string {
 	out := `<div class="control">`
 	radioTmpl := `<label class="radio"><input type="radio" name="%s" value="%d">%s</label><hr><br>`
 	for _, q := range p.Questions {
-		out += "<h2>" + q.Question + "</h2><br>"
+		out += fmt.Sprintf(`<h2 class="has-text-link">%s</h2><br>`, q.Question)
 		for i, o := range q.Options {
 			out += fmt.Sprintf(radioTmpl, q.ID, i, o)
 		}

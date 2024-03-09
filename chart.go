@@ -7,21 +7,6 @@ import (
 	"github.com/go-echarts/go-echarts/v2/opts"
 )
 
-// func (p *Poll) CreateBarCharItems() []opts.BarData {
-// 	var items []opts.BarData
-// 	results := p.Results()
-// 	for k, v := range results {
-// 		items = append(items, opts.BarData{Value: v, Name: k})
-// 	}
-// 	return items
-// }
-
-// func (p *Poll) CreateBarItems(val int) []opts.BarData {
-// 	var items []opts.BarData
-
-// 	return items
-// }
-
 func (p *Poll) CreateBarChart() []*charts.Bar {
 	results := p.Results()
 	// var tickNames []string
