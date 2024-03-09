@@ -31,6 +31,11 @@ func (h *HTMXGateway) HomeHandler(w http.ResponseWriter, r *http.Request) {
 		session.Save(r, w)
 	}
 
+	if session.Values["voted"] == true {
+		http.Error(w, "You have already voted", http.StatusForbidden)
+		return
+	}
+
 	questionsDiv := h.Poll.CreateQuestionHTML()
 
 	fmt.Fprintf(w, homePage, questionsDiv)
@@ -42,6 +47,10 @@ func (h *HTMXGateway) PollHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No session ID", http.StatusBadRequest)
 		return
 	}
+	// if session.Values["voted"] == true {
+	// 	http.Error(w, "You have already voted", http.StatusForbidden)
+	// 	return
+	// }
 
 	err := r.ParseForm()
 	if err != nil {
@@ -91,9 +100,9 @@ func NewHTMXGateway() *HTMXGateway {
 		StartTime: time.Now(),
 		Server:    http.NewServeMux(),
 	}
-	protectedPoll := VoteEnforcer(http.HandlerFunc(h.PollHandler))
-	h.Server.Handle("/poll", protectedPoll)
-	h.Server.HandleFunc("/", h.HomeHandler)
+	protectedPoll := VoteEnforcer(http.HandlerFunc(h.HomeHandler))
+	h.Server.HandleFunc("/poll", h.PollHandler)
+	h.Server.Handle("/", protectedPoll)
 	h.Server.HandleFunc("/results", h.ResultsHandler)
 	h.Server.HandleFunc("/config", h.ConfigHandler)
 	h.Poll = NewPoll()
