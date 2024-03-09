@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 )
 
 type PollSelection struct {
@@ -18,23 +19,23 @@ type Question struct {
 }
 
 type Poll struct {
+	Mem        *sync.RWMutex
 	ID         string                `json:"id"`
 	Questions  []Question            `json:"questions"`
 	Selections map[PollSelection]int `json:"selections"`
 }
 
 func NewPoll() *Poll {
+	mux := &sync.RWMutex{}
 	return &Poll{
 		Selections: make(map[PollSelection]int),
+		Mem:        mux,
 	}
 }
 
-func (p *Poll) AddQuestion(question string, options []string) {
-	q := Question{
-		ID:       "1",
-		Question: question,
-		Options:  options,
-	}
+func (p *Poll) AddQuestion(q Question) {
+	p.Mem.Lock()
+	defer p.Mem.Unlock()
 	p.Questions = append(p.Questions, q)
 }
 
@@ -53,6 +54,8 @@ func (p *Poll) LoadQuestions(fh string) error {
 }
 
 func (p *Poll) AddSelection(questionID string, selection int) {
+	p.Mem.Lock()
+	defer p.Mem.Unlock()
 	p.Selections[PollSelection{
 		QuestionID: questionID,
 		Selection:  selection,
@@ -62,6 +65,8 @@ func (p *Poll) AddSelection(questionID string, selection int) {
 func (p *Poll) Results() map[string][]int {
 	// fmt.Println("selections", p.Selections)
 	results := make(map[string][]int)
+	p.Mem.RLock()
+	defer p.Mem.RUnlock()
 	for _, q := range p.Questions {
 		var questionResults []int
 		for i := 0; i < len(q.Options); i++ {
@@ -76,6 +81,16 @@ func (p *Poll) Results() map[string][]int {
 	}
 	return results
 }
+
+// func (p *Poll) Results() map[PollSelection]int {
+// 	results := make(map[PollSelection]int)
+// 	p.Mem.RLock()
+// 	defer p.Mem.RUnlock()
+// 	for s, count := range p.Selections {
+// 		results[s] = count
+// 	}
+// 	return results
+// }
 
 func (p *Poll) TotalVotes() int {
 	total := 0
