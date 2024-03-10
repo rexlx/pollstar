@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -69,7 +70,7 @@ func (h *HTMXGateway) PollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	session.Values["voted"] = true
 	session.Save(r, w)
-	div := `<div class="notification is-success">Thanks for voting! <a href="/results">Results</a></div>`
+	div := `<div class="notification is-success">Thanks for voting! <a href="/results">results</a> | <a href="/download">raw data</a></div>`
 	fmt.Fprintf(w, div)
 }
 
@@ -92,6 +93,28 @@ func (h *HTMXGateway) ConfigHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "config not configured")
 }
 
+func (h *HTMXGateway) DownloadHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "session.id")
+	if session.Values["session.id"] == nil {
+		fmt.Println("no session id for downloader", r.RemoteAddr)
+		http.Error(w, "No session ID", http.StatusBadRequest)
+		return
+	}
+	h.Poll.Mem.RLock()
+	results := h.Poll.Results()
+	h.Poll.Mem.RUnlock()
+	// out, err := json.Marshal(results)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", "attachment; filename=results.json")
+	// w.Header().Set("Content-Length", strconv.Itoa(len(results)))
+	json.NewEncoder(w).Encode(results)
+	fmt.Println("results downloaded", r.RemoteAddr)
+}
+
 func NewHTMXGateway() *HTMXGateway {
 	h := &HTMXGateway{
 		StartTime: time.Now(),
@@ -102,6 +125,7 @@ func NewHTMXGateway() *HTMXGateway {
 	h.Server.Handle("/", protectedPoll)
 	h.Server.HandleFunc("/results", h.ResultsHandler)
 	h.Server.HandleFunc("/config", h.ConfigHandler)
+	h.Server.HandleFunc("/download", h.DownloadHandler)
 	h.Poll = NewPoll()
 	return h
 }
@@ -116,17 +140,17 @@ var homePage = `
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>poll</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>pollstar</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
 	<script src="https://unpkg.com/htmx.org@1.9.6" integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni" crossorigin="anonymous"></script>
 </head>
 <body>
-<section class="section has-background-black">
+<section class="section has-background-dark">
 	<div class="container">
 	<form hx-post="/poll">
 		%s
-		<button type="submit" class="button is-info">submit</button>
+		<button type="submit" class="button is-info has-text-black">submit</button>
 	</form>
 	</div>
 </section>
