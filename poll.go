@@ -63,7 +63,6 @@ func (p *Poll) AddSelection(questionID string, selection int) {
 }
 
 func (p *Poll) Results() map[string][]int {
-	// fmt.Println("selections", p.Selections)
 	results := make(map[string][]int)
 	p.Mem.RLock()
 	defer p.Mem.RUnlock()

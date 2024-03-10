@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	questions = flag.String("questions", "questions.json", "The file containing the questions")
+	questions  = flag.String("questions", "questions.json", "The file containing the questions")
+	sessionKey = flag.String("session-key", "thisisfine", "The session key")
 )
 
 func main() {

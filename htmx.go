@@ -24,18 +24,13 @@ type BasicStyle struct {
 	BtnText  string
 }
 
+// this should be protected by middleware to prevent multiple votes
 func (h *HTMXGateway) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session.id")
 	if session.Values["session.id"] == nil {
 		session.Values["session.id"] = createSessionID()
 		session.Save(r, w)
 	}
-
-	// if session.Values["voted"] == true {
-	// 	http.Error(w, "You have already voted", http.StatusForbidden)
-	// 	fmt.Println("You have already voted")
-	// 	return
-	// }
 
 	questionsDiv := h.Poll.CreateQuestionHTML()
 
@@ -48,10 +43,10 @@ func (h *HTMXGateway) PollHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No session ID", http.StatusBadRequest)
 		return
 	}
-	// if session.Values["voted"] == true {
-	// 	http.Error(w, "You have already voted", http.StatusForbidden)
-	// 	return
-	// }
+	if session.Values["voted"] == true {
+		http.Error(w, "You have already voted", http.StatusForbidden)
+		return
+	}
 
 	err := r.ParseForm()
 	if err != nil {
@@ -94,7 +89,7 @@ func (h *HTMXGateway) ResultsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTMXGateway) ConfigHandler(w http.ResponseWriter, r *http.Request) {
-	// ...
+	fmt.Fprint(w, "config not configured")
 }
 
 func NewHTMXGateway() *HTMXGateway {
