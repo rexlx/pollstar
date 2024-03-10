@@ -91,7 +91,7 @@ func (p *Poll) TotalVotes() int {
 
 func (p *Poll) CreateQuestionHTML() string {
 	out := `<div class="control">`
-	radioTmpl := `<label class="radio"><input type="radio" name="%s" value="%d">%s</label><hr><br>`
+	radioTmpl := `<label class="radio"><input type="radio" name="%s" value="%d"> %s</label><hr><br>`
 	for _, q := range p.Questions {
 		out += fmt.Sprintf(`<h2 class="has-text-link">%s</h2><br>`, q.Question)
 		for i, o := range q.Options {
