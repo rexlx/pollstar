@@ -74,7 +74,8 @@ func (h *HTMXGateway) PollHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	session.Values["voted"] = true
 	session.Save(r, w)
-	fmt.Fprintf(w, "Thanks for voting!")
+	div := `<div class="notification is-success">Thanks for voting! <a href="/results">Results</a></div>`
+	fmt.Fprintf(w, div)
 }
 
 func (h *HTMXGateway) ResultsHandler(w http.ResponseWriter, r *http.Request) {
