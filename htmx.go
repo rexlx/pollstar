@@ -190,6 +190,28 @@ func (h *HTMXGateway) AddQuestionHandler(w http.ResponseWriter, r *http.Request)
 	fmt.Fprintf(w, `<small class="has-text-success">question added (%v)</small><br>`, id)
 }
 
+func (h *HTMXGateway) AdminModeHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "session.admin")
+	if session.Values["session.admin"] == nil {
+		session.Values["session.admin"] = "supercowpower"
+		session.Save(r, w)
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	formData := r.Form
+	if formData.Get("adminmode") == "true" {
+		h.AdminMode = true
+	} else {
+		h.AdminMode = false
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 func (h *HTMXGateway) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session.id")
 	if session.Values["session.id"] == nil {
@@ -225,6 +247,7 @@ func NewHTMXGateway(m Modes) *HTMXGateway {
 	h.Server.HandleFunc("/add-question", h.AddQuestionHandler)
 	h.Server.HandleFunc("/add-option", h.AddOptionHandler)
 	h.Server.HandleFunc("/questions", h.QuestionHandler)
+	h.Server.HandleFunc("/admin-mode", h.AdminModeHandler)
 	h.Poll = NewPoll()
 	return h
 }
@@ -275,7 +298,8 @@ var configPage = `<!DOCTYPE html>
 	<div class="navbar-menu">
 		<div class="navbar-end">
 			<div class="navbar-item">
-				<a hx-get="/clear-poll" class="button is-danger has-text-black" hx-swap="none">Clear Poll</a>
+				<a hx-get="/clear-poll" class="button is-danger has-text-black mr-2" hx-swap="none">clear poll</a>
+				<a hx-get="/admin-mode" class="button is-danger has-text-black mr-2" hx-swap="none">admin mode</a>
 			</div>
 		</div>
 	</div>
@@ -303,24 +327,7 @@ var configPage = `<!DOCTYPE html>
 			</div>
 	</div>
 	</form>
-<div class="container">
-<form hx-post="/config">
-	<div class="field">
-		<label class="label has-text-white">Admin Mode</label>
-		<div class="control">
-			<label class="checkbox has-text-info">
-				<input type="checkbox" name="adminmode" value="true">
-				Admin Mode
-			</label>
-		</div>
-		</div>
-				<div class="field">
-					<div class="control">
-					<button type="submit" class="button is-info has-text-black">toggle admin</button>
-					</div>
-			</div>
-		</form>
-	</div>
+	<hr>
 	<div class="container questions" hx-get="/questions" hx-trigger="every 2s">
 	%v
 	</div>
