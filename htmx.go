@@ -11,10 +11,15 @@ import (
 )
 
 type HTMXGateway struct {
+	Modes
 	Poll      *Poll
 	Style     BasicStyle
 	StartTime time.Time
 	Server    *http.ServeMux
+}
+
+type Modes struct {
+	AdminMode bool
 }
 
 type BasicStyle struct {
@@ -71,7 +76,7 @@ func (h *HTMXGateway) PollHandler(w http.ResponseWriter, r *http.Request) {
 	session.Values["voted"] = true
 	session.Save(r, w)
 	div := `<div class="notification is-success">Thanks for voting! <a href="/results">results</a> | <a href="/download">raw data</a></div>`
-	fmt.Fprintf(w, div)
+	fmt.Fprint(w, div)
 }
 
 func (h *HTMXGateway) ResultsHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +95,99 @@ func (h *HTMXGateway) ResultsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTMXGateway) ConfigHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "config not configured")
+	if !h.AdminMode {
+		fmt.Fprint(w, "Admin mode is not enabled, youve been reported")
+		return
+	}
+
+	session, _ := store.Get(r, "session.admin")
+	if session.Values["session.admin"] == nil {
+		session.Values["session.admin"] = "supercowpower"
+		session.Save(r, w)
+	}
+
+	questoinsDiv := h.Poll.AdminCreateQuestionHTML()
+	configPage := fmt.Sprintf(configPage, questoinsDiv)
+	fmt.Fprint(w, configPage)
+}
+
+func (h *HTMXGateway) QuestionHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.AdminMode {
+		fmt.Fprint(w, "Admin mode is not enabled, youve been reported")
+		return
+	}
+
+	session, _ := store.Get(r, "session.admin")
+	if session.Values["session.admin"] == nil {
+		session.Values["session.admin"] = "supercowpower"
+		session.Save(r, w)
+	}
+
+	questoinsDiv := h.Poll.AdminCreateQuestionHTML()
+	// configPage := fmt.Sprintf(configPage, questoinsDiv)
+	fmt.Fprint(w, questoinsDiv)
+}
+
+func (h *HTMXGateway) ClearPollHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.AdminMode {
+		http.Error(w, "Admin mode is not enabled", http.StatusForbidden)
+		return
+	}
+
+	session, _ := store.Get(r, "session.admin")
+	if session.Values["session.admin"] != "supercowpower" {
+		http.Error(w, "You are not the one", http.StatusForbidden)
+		return
+	}
+
+	h.Poll.Clear()
+	fmt.Fprint(w, "Poll has been cleared")
+}
+
+func (h *HTMXGateway) AddOptionHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, `<input class="input" type="text" name="options">`)
+}
+
+func (h *HTMXGateway) AddQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	var questionOptions []string
+	if !h.AdminMode {
+		http.Error(w, "Admin mode is not enabled", http.StatusForbidden)
+		return
+	}
+
+	session, _ := store.Get(r, "session.admin")
+	if session.Values["session.admin"] != "supercowpower" {
+		http.Error(w, "You are not the one", http.StatusForbidden)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	formData := r.Form
+	question := formData.Get("question")
+	options := formData["options"]
+	if question == "" || len(options) < 2 {
+		http.Error(w, "Invalid question", http.StatusBadRequest)
+		return
+	}
+	for _, o := range options {
+		if o != "" {
+			questionOptions = append(questionOptions, o)
+		}
+	}
+	id := uuid.New().String()
+	q := Question{
+		ID:       id,
+		Question: question,
+		Options:  questionOptions,
+	}
+	h.Poll.AddQuestion(q)
+	// http.Redirect(w, r, "/config", http.StatusSeeOther)
+	fmt.Fprintf(w, `<small class="has-text-success">question added (%v)</small><br>`, id)
 }
 
 func (h *HTMXGateway) DownloadHandler(w http.ResponseWriter, r *http.Request) {
@@ -100,32 +197,34 @@ func (h *HTMXGateway) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No session ID", http.StatusBadRequest)
 		return
 	}
+
 	h.Poll.Mem.RLock()
 	results := h.Poll.Results()
 	h.Poll.Mem.RUnlock()
-	// out, err := json.Marshal(results)
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", "attachment; filename=results.json")
-	// w.Header().Set("Content-Length", strconv.Itoa(len(results)))
+
 	json.NewEncoder(w).Encode(results)
 	fmt.Println("results downloaded", r.RemoteAddr)
 }
 
-func NewHTMXGateway() *HTMXGateway {
+func NewHTMXGateway(m Modes) *HTMXGateway {
 	h := &HTMXGateway{
 		StartTime: time.Now(),
 		Server:    http.NewServeMux(),
 	}
+	h.Modes = m
 	protectedPoll := VoteEnforcer(http.HandlerFunc(h.HomeHandler))
 	h.Server.HandleFunc("/poll", h.PollHandler)
 	h.Server.Handle("/", protectedPoll)
 	h.Server.HandleFunc("/results", h.ResultsHandler)
 	h.Server.HandleFunc("/config", h.ConfigHandler)
 	h.Server.HandleFunc("/download", h.DownloadHandler)
+	h.Server.HandleFunc("/clear-poll", h.ClearPollHandler)
+	h.Server.HandleFunc("/add-question", h.AddQuestionHandler)
+	h.Server.HandleFunc("/add-option", h.AddOptionHandler)
+	h.Server.HandleFunc("/questions", h.QuestionHandler)
 	h.Poll = NewPoll()
 	return h
 }
@@ -152,6 +251,78 @@ var homePage = `
 		%s
 		<button type="submit" class="button is-info has-text-black">submit</button>
 	</form>
+	</div>
+</section>
+</body>
+</html>`
+
+var configPage = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>pollstar</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+	<script src="https://unpkg.com/htmx.org@1.9.6" integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni" crossorigin="anonymous"></script>
+</head>
+<body>
+<nav class="navbar has-background-dark" role="navigation" aria-label="main navigation">
+	<div class="navbar-brand">
+		<a class="navbar-item" href="/">
+			<h1 class="title is-1 has-text-info">pollstar</h1>
+		</a>
+	</div>
+	<div class="navbar-menu">
+		<div class="navbar-end">
+			<div class="navbar-item">
+				<a hx-get="/clear-poll" class="button is-danger has-text-black" hx-swap="none">Clear Poll</a>
+			</div>
+		</div>
+	</div>
+</nav>
+<section class="section has-background-black">
+<div class="container">
+<form hx-post="/add-question" hx-swap="beforeend" hx-on::after-request="this.reset()">
+	<div class="field">
+		<label class="label has-text-white">question</label>
+		<div class="control">
+			<input class="input" type="text" name="question">
+		</div>
+	</div>
+	<div class="field">
+		<label class="label has-text-white">options</label>
+		<button hx-get="/add-option" hx-swap="afterend" class="button is-info has-text-black">add</button>
+		<div class="control">
+			<input class="input" type="text" name="options">
+			<input class="input" type="text" name="options">
+			</div>
+		</div>
+		<div class="field">
+			<div class="control">
+			<button type="submit" class="button is-info has-text-black">submit</button>
+			</div>
+	</div>
+	</form>
+<div class="container">
+<form hx-post="/config">
+	<div class="field">
+		<label class="label has-text-white">Admin Mode</label>
+		<div class="control">
+			<label class="checkbox has-text-info">
+				<input type="checkbox" name="adminmode" value="true">
+				Admin Mode
+			</label>
+		</div>
+		</div>
+				<div class="field">
+					<div class="control">
+					<button type="submit" class="button is-info has-text-black">toggle admin</button>
+					</div>
+			</div>
+		</form>
+	</div>
+	<div class="container questions" hx-get="/questions" hx-trigger="every 2s">
+	%v
 	</div>
 </section>
 </body>

@@ -101,3 +101,26 @@ func (p *Poll) CreateQuestionHTML() string {
 	out += "</div>"
 	return out
 }
+
+func (p *Poll) Clear() {
+	p.Mem.Lock()
+	defer p.Mem.Unlock()
+	p.Selections = make(map[PollSelection]int)
+	p.Questions = make([]Question, 0)
+}
+
+func (p *Poll) AdminCreateQuestionHTML() string {
+	p.Mem.RLock()
+	defer p.Mem.RUnlock()
+	out := `<div class="card has-background-dark">`
+	tmpl := `<div class="card-content"><h2 class="has-text-link">%s</h2><br>`
+	for _, q := range p.Questions {
+		out += fmt.Sprintf(tmpl, q.Question)
+		for i, o := range q.Options {
+			out += fmt.Sprintf(`<p>%d. %s</p>`, i, o)
+		}
+		out += "</div>"
+	}
+	out += "</div>"
+	return out
+}

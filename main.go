@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	questions  = flag.String("questions", "questions.json", "The file containing the questions")
-	sessionKey = flag.String("session-key", "thisisfine", "The session key")
+	questions        = flag.String("questions", "questions.json", "The file containing the questions")
+	sessionKey       = flag.String("session-key", "thisisfine", "The session key")
+	startInAdminMode = flag.Bool("admin", false, "Start in admin mode")
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 		MaxAge:   60 * 15,
 		HttpOnly: true,
 	}
-	gateway := NewHTMXGateway()
+	gateway := NewHTMXGateway(Modes{AdminMode: *startInAdminMode})
 	gateway.Poll = NewPoll()
 	err := gateway.Poll.LoadQuestions(*questions)
 	if err != nil {
