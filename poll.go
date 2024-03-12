@@ -117,7 +117,7 @@ func (p *Poll) AdminCreateQuestionHTML() string {
 	for _, q := range p.Questions {
 		out += fmt.Sprintf(tmpl, q.Question)
 		for i, o := range q.Options {
-			out += fmt.Sprintf(`<p>%d. %s</p>`, i, o)
+			out += fmt.Sprintf(`<p class="has-text-white">%d. %s</p>`, i, o)
 		}
 		out += "</div>"
 	}
