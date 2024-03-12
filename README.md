@@ -1,13 +1,15 @@
-simple polling web application. See dockerfile if running in docker, otherwise run
+## go/htmx polling web application.
+See dockerfile if running in docker, otherwise run
 
 ```shell
 go build .
 ./pollstar -questions questions.json -admin
 ```
 
-visit http://localhost:3000/config to configure. toggle admin mode when finished.
+## admin page
+http://localhost:3000/config to configure. toggle admin mode when finished.
 
-routes:
+## routes
 - h.Server.HandleFunc("/poll", h.PollHandler)
 - h.Server.Handle("/", protectedPoll)
 - h.Server.HandleFunc("/results", h.ResultsHandler)
