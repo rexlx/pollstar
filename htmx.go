@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -12,6 +14,9 @@ import (
 
 type HTMXGateway struct {
 	Modes
+	Storage   *Storage
+	Addr      string
+	Done      chan struct{}
 	Poll      *Poll
 	Style     BasicStyle
 	StartTime time.Time
@@ -19,7 +24,9 @@ type HTMXGateway struct {
 }
 
 type Modes struct {
-	AdminMode bool
+	AdminMode    bool
+	SaveToBucket bool
+	Collapse     bool
 }
 
 type BasicStyle struct {
@@ -231,7 +238,41 @@ func (h *HTMXGateway) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("results downloaded", r.RemoteAddr)
 }
 
-func NewHTMXGateway(m Modes) *HTMXGateway {
+func (h *HTMXGateway) Start() error {
+	return http.ListenAndServe(h.Addr, h.Server)
+}
+
+func (h *HTMXGateway) Collapse() error {
+	if h.Modes.SaveToBucket {
+		return h.SaveToBucket()
+	} else {
+		return h.SaveToFile("test.json")
+	}
+}
+
+func (h *HTMXGateway) SaveToFile(fname string) error {
+	fmt.Println("saving to file", fname)
+	out, err := h.Poll.JSON()
+	if err != nil {
+		return err
+	}
+	fh, err := os.Create(fname)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	_, err = fh.Write(out)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *HTMXGateway) SaveToBucket() error {
+	return nil
+}
+
+func NewHTMXGateway(m Modes, bucket string) (*HTMXGateway, error) {
 	h := &HTMXGateway{
 		StartTime: time.Now(),
 		Server:    http.NewServeMux(),
@@ -249,7 +290,15 @@ func NewHTMXGateway(m Modes) *HTMXGateway {
 	h.Server.HandleFunc("/questions", h.QuestionHandler)
 	h.Server.HandleFunc("/admin-mode", h.AdminModeHandler)
 	h.Poll = NewPoll()
-	return h
+	if bucket != "" {
+		s, err := NewStorage(context.Background(), bucket)
+		if err != nil {
+			return nil, err
+		}
+		s.Active = true
+		h.Storage = s
+	}
+	return h, nil
 }
 
 func createSessionID() string {

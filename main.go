@@ -1,35 +1,90 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gorilla/sessions"
 )
 
 var (
+	addr             = flag.String("addr", ":3000", "The address to listen on")
 	questions        = flag.String("questions", "questions.json", "The file containing the questions")
 	sessionKey       = flag.String("session-key", "thisisfine", "The session key")
 	startInAdminMode = flag.Bool("admin", false, "Start in admin mode")
+	bucket           = flag.String("bucket", "", "The bucket to use for storing the poll")
+	collapse         = flag.Bool("collapse", false, "Collapse the poll after voting")
+	ttl              = flag.Int("ttl", 60, "how long for the poll to live")
+	// sessionDur       = flag.Int("duration", 15, "The time to live for the session")
 )
 
 func main() {
+	var modes Modes
+
+	done := make(chan struct{})
+	signals := make(chan os.Signal, 1)
 	flag.Parse()
+
 	store.Options = &sessions.Options{
 		Path:     "/",
 		MaxAge:   60 * 15,
 		HttpOnly: true,
 	}
-	gateway := NewHTMXGateway(Modes{AdminMode: *startInAdminMode})
-	gateway.Poll = NewPoll()
-	err := gateway.Poll.LoadQuestions(*questions)
+
+	modes.AdminMode = *startInAdminMode
+	modes.Collapse = *collapse
+
+	gateway, err := NewHTMXGateway(modes, *bucket)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	gateway.Poll = NewPoll()
+	gateway.Done = done
+
+	err = gateway.Poll.LoadQuestions(*questions)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	signal.Notify(signals, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	fmt.Println("Loaded questions, starting server")
-	log.Fatal(http.ListenAndServe(":3000", gateway.Server))
+
+	server := &http.Server{
+		Addr:    *addr,
+		Handler: gateway.Server,
+	}
+
+	go func() {
+		<-done
+		server.Shutdown(context.Background())
+	}()
+	go server.ListenAndServe()
+
+	for {
+		fmt.Println("Poll is running")
+		select {
+		case <-time.After(time.Duration(*ttl) * time.Second):
+			if modes.Collapse {
+				gateway.Collapse()
+				fmt.Println("Poll has expired")
+				close(done)
+				os.Exit(0)
+			}
+		case <-signals:
+			gateway.Collapse()
+			fmt.Println("received signal to terminate")
+			close(done)
+			os.Exit(0)
+		}
+	}
+
 }

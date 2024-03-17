@@ -19,10 +19,10 @@ type Question struct {
 }
 
 type Poll struct {
-	Mem        *sync.RWMutex
+	Mem        *sync.RWMutex         `json:"-"`
 	ID         string                `json:"id"`
 	Questions  []Question            `json:"questions"`
-	Selections map[PollSelection]int `json:"selections"`
+	Selections map[PollSelection]int `json:"-"`
 }
 
 func NewPoll() *Poll {
@@ -37,6 +37,18 @@ func (p *Poll) AddQuestion(q Question) {
 	p.Mem.Lock()
 	defer p.Mem.Unlock()
 	p.Questions = append(p.Questions, q)
+}
+
+func (p *Poll) JSON() ([]byte, error) {
+	out := make(map[string]interface{})
+	out["id"] = p.ID
+	out["questions"] = p.Questions
+	for k, v := range p.Selections {
+		key := fmt.Sprintf("%s-%d", k.QuestionID, k.Selection)
+		out[key] = v
+	}
+
+	return json.Marshal(out)
 }
 
 func (p *Poll) LoadQuestions(fh string) error {
