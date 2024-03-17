@@ -14,6 +14,8 @@ import (
 )
 
 var (
+	projectID        = flag.String("project-id", "default-project", "The project id")
+	pollId           = flag.String("poll-id", "default-poll", "The poll id")
 	addr             = flag.String("addr", ":3000", "The address to listen on")
 	questions        = flag.String("questions", "questions.json", "The file containing the questions")
 	sessionKey       = flag.String("session-key", "thisisfine", "The session key")
@@ -40,7 +42,7 @@ func main() {
 	modes.AdminMode = *startInAdminMode
 	modes.Collapse = *collapse
 
-	gateway, err := NewHTMXGateway(modes, *bucket)
+	gateway, err := NewHTMXGateway(modes, BucketConfig{Bucket: *bucket, Project: *projectID, Poll: *pollId})
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

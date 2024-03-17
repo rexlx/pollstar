@@ -37,6 +37,13 @@ type BasicStyle struct {
 	BtnText  string
 }
 
+type BucketConfig struct {
+	Project string
+	SAFile  string
+	Bucket  string
+	Poll    string
+}
+
 // this should be protected by middleware to prevent multiple votes
 func (h *HTMXGateway) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "session.id")
@@ -272,7 +279,7 @@ func (h *HTMXGateway) SaveToBucket() error {
 	return nil
 }
 
-func NewHTMXGateway(m Modes, bucket string) (*HTMXGateway, error) {
+func NewHTMXGateway(m Modes, bucketCfg BucketConfig) (*HTMXGateway, error) {
 	h := &HTMXGateway{
 		StartTime: time.Now(),
 		Server:    http.NewServeMux(),
@@ -290,8 +297,9 @@ func NewHTMXGateway(m Modes, bucket string) (*HTMXGateway, error) {
 	h.Server.HandleFunc("/questions", h.QuestionHandler)
 	h.Server.HandleFunc("/admin-mode", h.AdminModeHandler)
 	h.Poll = NewPoll()
-	if bucket != "" {
-		s, err := NewStorage(context.Background(), bucket)
+	h.Poll.ID = bucketCfg.Poll
+	if bucketCfg.Bucket != "" {
+		s, err := NewStorage(context.Background(), bucketCfg.Bucket)
 		if err != nil {
 			return nil, err
 		}
